@@ -1,0 +1,50 @@
+:root{
+  --bg:#0f1115; --card:#151826; --muted:#2b3247; --fg:#e9e9f1; --accent:#8b5cf6;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu}
+.wrap{max-width:900px;margin:32px auto;padding:0 16px}
+h1{margin:0 0 6px 0;font-size:28px}
+.subtitle{opacity:.8;margin:0 0 16px 0}
+
+.card{background:var(--card);border:1px solid var(--muted);border-radius:16px;padding:16px;margin:14px 0;box-shadow:0 6px 22px rgba(0,0,0,.24)}
+.grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+label span{display:block;margin:4px 0 6px 0;opacity:.9}
+select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--muted);background:var(--bg);color:var(--fg)}
+
+.actions{display:flex;gap:10px;margin-top:12px}
+button{background:#2563eb;color:#fff;border:0;border-radius:999px;padding:10px 16px;font-weight:700;cursor:pointer}
+button.secondary{background:#374151}
+button.tiny{padding:6px 10px;font-size:12px}
+button.info{font-size:12px;margin-left:6px;border:1px solid var(--muted);background:#151826;color:var(--fg);padding:2px 8px;border-radius:999px}
+
+.hidden{display:none}
+
+.bars{margin:10px 0 6px}
+.bar{display:grid;grid-template-columns:140px 1fr 60px;gap:8px;align-items:center;margin:8px 0}
+.bar > span:first-child{opacity:.9}
+.bar .fill{height:12px;background:linear-gradient(90deg,#8b5cf6,#22c55e);border-radius:999px;transition:width .35s ease}
+
+.xg{margin:6px 0 14px}
+
+#scorelines{margin:8px 0 0 16px}
+#scorelines li{margin:4px 0}
+
+.chips{margin:4px 0 8px}
+.chip{display:inline-block;padding:4px 8px;border-radius:999px;background:#2b3247;color:#e9e9f1;font-size:12px;font-weight:600;opacity:.85}
+.chip.ml{background:#0ea5e9}      /* celeste: ML */
+.chip.xg{background:#22c55e}      /* verde: xG/sigmoide */
+.chip.poisson{background:#f59e0b} /* ámbar: Poisson */
+
+.charts{display:flex;gap:20px;flex-wrap:wrap;align-items:center;justify-content:flex-start;margin:12px 0 8px}
+canvas{background:transparent}
+
+.value-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:8px}
+.value-grid label{display:block;margin:6px 0}
+.value-grid input{width:100%;padding:6px;border-radius:8px;border:1px solid var(--muted);background:#0f1115;color:#e9e9f1}
+.value-list{margin:8px 0 0 0;padding-left:18px}
+.value-list li.good{color:#22c55e}
+.value-list li.bad{color:#ef4444}
+
+footer{opacity:.7;margin:16px 0 40px}
+@media (max-width:640px){ .grid-2{grid-template-columns:1fr} .bar{grid-template-columns:110px 1fr 50px} }

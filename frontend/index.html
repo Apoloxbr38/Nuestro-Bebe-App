@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sexy Sports Predictor ⚽✨</title>
+  <base href="/app/">
+  <link rel="icon" type="image/png" href="assets/logo.png">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="preconnect" href="https://unpkg.com">
+  <style>
+    :root{
+      --bg:#0b0d12; --panel:#11151d; --muted:#9aa3b2; --text:#e6eaf2;
+      --brand:#8b5cf6; --brand2:#06b6d4; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444;
+      --ring: 0 0 0 2px hsl(255 85% 65% / .35);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background:
+        radial-gradient(1200px 800px at 80% -10%, #13203a 0%, transparent 60%),
+        radial-gradient(1000px 600px at -10% 90%, #1e123a 0%, transparent 60%),
+        var(--bg);
+      color:var(--text);
+      font:16px/1.5 Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial;
+    }
+    .container{max-width:1280px;margin:0 auto;padding:24px}
+    header{display:flex;align-items:center;gap:14px;margin:8px 0 18px}
+    .brandlock img{height:42px;border-radius:10px}
+    .brandlock .ttl{font-size:26px;font-weight:800;letter-spacing:.3px}
+    .muted{color:var(--muted)}
+
+    .card{background:color-mix(in oklab,var(--panel) 86%,black 14%);
+      border:1px solid #1c2230;border-radius:20px;padding:20px;box-shadow:0 8px 30px #0008}
+    .card h2{margin:0 0 12px;font-size:18px}
+
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+    .col-4{grid-column:span 4} .col-6{grid-column:span 6} .col-8{grid-column:span 8} .col-12{grid-column:span 12}
+    @media (max-width:900px){.col-4,.col-6,.col-8{grid-column:span 12}}
+
+    /* Layout superior de 3 columnas */
+    .hero3{display:grid;grid-template-columns:5fr 7fr 4fr;gap:18px}
+    @media (max-width:1200px){.hero3{grid-template-columns:1fr 1fr}}
+    @media (max-width:900px){.hero3{grid-template-columns:1fr}}
+
+    label{display:block;margin:0 0 6px;font-size:13px;color:var(--muted)}
+    select,input,button{width:100%;padding:12px 14px;border-radius:12px;background:#0f1420;border:1px solid #20283a;color:var(--text)}
+    select:focus,input:focus,button:focus{outline:none;box-shadow:var(--ring);border-color:#5b70ff}
+    .btn{cursor:pointer;font-weight:700;letter-spacing:.3px;background:linear-gradient(135deg,var(--brand),var(--brand2));border:none;color:white;transition:.2s transform,.2s filter}
+    .btn:hover{filter:brightness(1.08)} .btn:active{transform:translateY(1px)}
+
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .pill{display:inline-flex;gap:10px;align-items:center;background:#0e1320;border:1px solid #20283a;padding:8px 12px;border-radius:999px}
+    .pill.stat{justify-content:space-between;margin:6px 0;font-size:13px}
+    .pill.stat b{font-variant-numeric:tabular-nums}
+    .ok{color:var(--ok)} .warning{color:var(--warn)} .err{color:var(--err)}
+
+    .prob-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    @media (max-width:620px){.prob-cards{grid-template-columns:1fr}}
+    .prob{padding:14px;border-radius:16px;border:1px solid #1b2232;background:#0f1522}
+    .prob h4{margin:0 0 6px;font-size:13px;color:var(--muted)}
+    .prob .p{font-size:24px;font-weight:800}
+
+    /* Escudos */
+    .crests{display:flex;gap:24px;align-items:center;justify-content:flex-start;margin:18px 0}
+    .crest{display:grid;place-items:center;width:80px;height:80px;border-radius:18px;background:#0e1320;border:1px solid #20283a;box-shadow:0 8px 30px #0006}
+    .crest img{max-height:56px;max-width:56px}
+
+    /* Últimos partidos */
+    .win  { font-weight:800; color:#22c55e; }
+    .loss { color:#9aa3b2; }
+    .draw { color:#e6eaf2; }
+    .score{ font-weight:700; }
+
+    footer{margin:28px 0 14px;text-align:center;color:#7f8798;font-size:13px}
+    a{color:#a7b5ff;text-decoration:none} a:hover{text-decoration:underline}
+  </style>
+</head>
+<body>
+<header class="app-header">
+  <div class="brandlock">
+    <img src="assets/ssp-mark.png" alt="Logo">
+    <div class="ttl">Sexy Sports Predictor</div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ===== TOP: 3 columnas ===== -->
+  <section class="hero3">
+    <!-- IZQUIERDA: controles + escudos -->
+    <div class="card">
+      <h2>Configura tu predicción</h2>
+      <div class="grid">
+        <div class="col-6">
+          <label for="league">Liga</label>
+          <select id="league"></select>
+        </div>
+        <div class="col-6" style="display:flex;align-items:flex-end;justify-content:flex-end">
+          <button id="reload" class="btn" style="min-width:180px">🔄 Cargar ligas</button>
+        </div>
+        <div class="col-6">
+          <label for="home">Local</label>
+          <select id="home"></select>
+        </div>
+        <div class="col-6">
+          <label for="away">Visita</label>
+          <select id="away"></select>
+        </div>
+        <div class="col-12" style="margin-top:8px">
+          <button id="predict" class="btn" style="width:100%;padding:14px 18px;font-size:16px">✨ Predecir partido</button>
+        </div>
+      </div>
+      <div id="hint" class="muted" style="margin-top:10px;font-size:13px">
+        Sugerencia: primero elige la liga y luego los equipos.
+      </div>
+
+      <!-- Escudos -->
+      <div class="crests">
+        <div class="crest"><img id="crestHome" alt="Home"></div>
+        <div class="crest"><img id="crestAway" alt="Away"></div>
+      </div>
+    </div>
+
+    <!-- CENTRO: gráfico -->
+    <div class="card">
+      <h2>Distribución de probabilidades</h2>
+      <canvas id="chart" height="220"></canvas>
+    </div>
+
+    <!-- DERECHA: estado + métricas rápidas -->
+    <div class="card">
+      <h2>Estado del sistema</h2>
+      <div class="row" style="margin-bottom:10px">
+        <div class="pill"><span>API:</span> <strong id="apiState" class="warning">comprobando…</strong></div>
+        <div class="pill"><span>Equipos:</span> <strong id="apiTeams" class="muted">—</strong></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="pill stat">⚽ xG Local: <b id="sb_xgh">—</b></div>
+        <div class="pill stat">⚽ xG Visita: <b id="sb_xga">—</b></div>
+        <div class="pill stat">📊 Total xG: <b id="sb_xgt">—</b></div>
+        <div class="pill stat">📈 Over 2.5: <b id="sb_over">—</b></div>
+        <div class="pill stat">📉 Under 2.5: <b id="sb_under">—</b></div>
+        <div class="pill stat">🔔 BTTS Sí: <b id="sb_bttsYes">—</b></div>
+        <div class="pill stat">🔕 BTTS No: <b id="sb_bttsNo">—</b></div>
+        <div class="pill stat">🚩 Córners Local: <b id="sb_cornh">—</b></div>
+        <div class="pill stat">🚩 Córners Visita: <b id="sb_corna">—</b></div>
+        <div class="pill stat">📊 Total: <b id="sb_cort">—</b></div>
+        <div class="pill stat">⬆️ Over 9.5: <b id="sb_corOver">—</b></div>
+        <div class="pill stat">⬇️ Under 9.5: <b id="sb_corUnder">—</b></div>
+        <div class="pill stat">🟨 Amarillas Local: <b id="sb_yelh">—</b></div>
+        <div class="pill stat">🟨 Amarillas Visita: <b id="sb_yela">—</b></div>
+        <div class="pill stat">📊 Total: <b id="sb_yelt">—</b></div>
+        <div class="pill stat">⬆️ Over 4.5: <b id="sb_yelOver">—</b></div>
+        <div class="pill stat">⬇️ Under 4.5: <b id="sb_yelUnder">—</b></div>
+        <div class="pill stat">🟥 Rojas Local: <b id="sb_redh">—</b></div>
+        <div class="pill stat">🟥 Rojas Visita: <b id="sb_reda">—</b></div>
+        <div class="pill stat">📊 Total: <b id="sb_redt">—</b></div>
+        <div class="pill stat">⚽ Goles =0: <b id="sb_g0">—</b></div>
+        <div class="pill stat">⚽ Goles =1: <b id="sb_g1">—</b></div>
+        <div class="pill stat">⚽ Goles =2: <b id="sb_g2">—</b></div>
+        <div class="pill stat">⚽ Goles 3+: <b id="sb_g3p">—</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== RESUMEN grande ===== -->
+  <section class="grid" style="margin-top:18px">
+    <div class="col-12">
+      <div class="card">
+        <h2>Resumen</h2>
+        <div class="prob-cards">
+          <div class="prob"><h4>🏠 Local</h4><div class="p" id="p_home">—</div></div>
+          <div class="prob"><h4>🤝 Empate</h4><div class="p" id="p_draw">—</div></div>
+          <div class="prob"><h4>🛫 Visita</h4><div class="p" id="p_away">—</div></div>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <span class="pill">⚽ xG Local: <b id="xgh">—</b></span>
+          <span class="pill">⚽ xG Visita: <b id="xga">—</b></span>
+          <span class="pill">📊 Total xG: <b id="xgt">—</b></span>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <span class="pill">📈 Over 2.5: <b id="over">—</b></span>
+          <span class="pill">📉 Under 2.5: <b id="under">—</b></span>
+          <span class="pill">🔔 BTTS Sí: <b id="bttsYes">—</b></span>
+          <span class="pill">🔕 BTTS No: <b id="bttsNo">—</b></span>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <span class="pill">🚩 Córners Local: <b id="cornh">—</b></span>
+          <span class="pill">🚩 Córners Visita: <b id="corna">—</b></span>
+          <span class="pill">📊 Total: <b id="cort">—</b></span>
+          <span class="pill">⬆️ Over 9.5: <b id="corOver">—</b></span>
+          <span class="pill">⬇️ Under 9.5: <b id="corUnder">—</b></span>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <span class="pill">🟨 Amarillas Local: <b id="yelh">—</b></span>
+          <span class="pill">🟨 Amarillas Visita: <b id="yela">—</b></span>
+          <span class="pill">📊 Total: <b id="yelt">—</b></span>
+          <span class="pill">⬆️ Over 4.5: <b id="yelOver">—</b></span>
+          <span class="pill">⬇️ Under 4.5: <b id="yelUnder">—</b></span>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <span class="pill">🟥 Rojas Local: <b id="redh">—</b></span>
+          <span class="pill">🟥 Rojas Visita: <b id="reda">—</b></span>
+          <span class="pill">📊 Total: <b id="redt">—</b></span>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <span class="pill">⚽ Goles =0: <b id="g0">—</b></span>
+          <span class="pill">⚽ Goles =1: <b id="g1">—</b></span>
+          <span class="pill">⚽ Goles =2: <b id="g2">—</b></span>
+          <span class="pill">⚽ Goles 3+: <b id="g3p">—</b></span>
+        </div>
+
+        <div class="muted" style="margin-top:12px;font-size:12px">
+          Fuentes: 1X2 <span id="src1x2">—</span> · O/U <span id="srcou">—</span> · BTTS <span id="srcbtts">—</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Tabla últimos partidos ===== -->
+  <section class="grid" style="margin-top:18px">
+    <div class="col-12">
+      <div class="card">
+        <h2>🗓️ Últimos 10 partidos (global)</h2>
+        <div class="muted" id="recentHint" style="margin-bottom:8px">Cargando…</div>
+        <div style="overflow:auto">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="text-align:left;border-bottom:1px solid #1b2232">
+                <th style="padding:8px">Fecha</th>
+                <th style="padding:8px">Liga</th>
+                <th style="padding:8px">Local</th>
+                <th style="padding:8px">Marcador</th>
+                <th style="padding:8px">Visita</th>
+              </tr>
+            </thead>
+            <tbody id="recentBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Hecho con 💜 por nosotros · <a href="/docs" target="_blank">API Docs</a>
+  </footer>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+/* ===== Utilidades ===== */
+const $ = (q) => document.querySelector(q);
+const api = (p) => fetch(p).then(r => { if(!r.ok) throw new Error(r.status+' '+r.statusText); return r.json(); });
+const DEFAULT_LEAGUES = ["SP1","E0","I1","D1","F1","N1","SC1","P1","B1"];
+const LEAGUE_NAMES = { SP1:'LaLiga (ES)', E0:'Premier (EN)', I1:'Serie A (IT)', D1:'Bundesliga (DE)', F1:'Ligue 1 (FR)', N1:'Eredivisie (NL)', SC1:'Scottish Prem (UK)', P1:'Primeira (PT)', B1:'Jupiler Pro (BE)' };
+function fmt(p){ return (p==null||isNaN(p))? '—' : (p*100).toFixed(1)+'%'; }
+
+/* ===== Gráfico ===== */
+let chart;
+function renderChart(ph, pd, pa){
+  const ctx = document.getElementById('chart');
+  const data = { labels:['Local','Empate','Visita'], datasets:[{ label:'Prob', data:[ph,pd,pa] }] };
+  if(chart){ chart.data = data; chart.update(); return; }
+  chart = new Chart(ctx, { type:'bar', data, options:{ responsive:true, scales:{ y:{ beginAtZero:true, max:1 } } } });
+}
+
+/* ===== Sidebar ===== */
+function renderSidebarMetrics(r){
+  const set = (id, val, asPct=false) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.textContent = (val==null || (asPct && isNaN(val))) ? '—' : (asPct ? (val*100).toFixed(1)+'%' : val);
+  };
+  set('sb_xgh', r.exp_goals_home);
+  set('sb_xga', r.exp_goals_away);
+  set('sb_xgt', r.exp_goals_total);
+  set('sb_over', r.ou_over25, true);
+  set('sb_under', r.ou_under25, true);
+  set('sb_bttsYes', r.btts_yes, true);
+  set('sb_bttsNo',  r.btts_no,  true);
+  set('sb_cornh', r.exp_corners_home);
+  set('sb_corna', r.exp_corners_away);
+  set('sb_cort',  r.exp_corners_total);
+  set('sb_corOver',  r.corners_over95,  true);
+  set('sb_corUnder', r.corners_under95, true);
+  set('sb_yelh', r.exp_yellows_home);
+  set('sb_yela', r.exp_yellows_away);
+  set('sb_yelt', r.exp_yellows_total);
+  set('sb_yelOver',  r.yellows_over45,  true);
+  set('sb_yelUnder', r.yellows_under45, true);
+  set('sb_redh', r.exp_reds_home);
+  set('sb_reda', r.exp_reds_away);
+  set('sb_redt', r.exp_reds_total);
+  set('sb_g0',  r.p_goals_0,     true);
+  set('sb_g1',  r.p_goals_1,     true);
+  set('sb_g2',  r.p_goals_2,     true);
+  set('sb_g3p', r.p_goals_3plus, true);
+}
+
+/* ===== Escudos dinámicos ===== */
+const TEAM_ALIASES = {
+  "Real Madrid": "real-madrid",
+  "Barcelona": "barcelona",
+  "Atlético Madrid": "atletico-madrid",
+  "Ath Bilbao": "athletic-bilbao",
+  "Celta Vigo": "celta",
+  "Nott'm Forest": "nottingham-forest",
+  "Man United": "manchester-united",
+  "Man City": "manchester-city",
+};
+function slugifyTeam(name){
+  if(!name) return "";
+  if(TEAM_ALIASES[name]) return TEAM_ALIASES[name];
+  return name.toLowerCase()
+             .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+             .replace(/[^a-z0-9]+/g,'-')
+             .replace(/(^-|-$)/g,'');
+}
+function setCrests(home, away){
+  const imgH = document.getElementById('crestHome');
+  const imgA = document.getElementById('crestAway');
+  const fallback = 'assets/logo.png';
+  const srcH = `assets/crests/${slugifyTeam(home)}.png`;
+  const srcA = `assets/crests/${slugifyTeam(away)}.png`;
+  const safeSet = (img, src) => { if(!img) return; img.onerror=()=>{img.onerror=null;img.src=fallback}; img.src=src; img.alt=src; };
+  safeSet(imgH, srcH); safeSet(imgA, srcA);
+}
+function updateCrestsFromSelects(){
+  const home = document.getElementById('home')?.value;
+  const away = document.getElementById('away')?.value;
+  setCrests(home, away);
+}
+
+/* ===== Init + Health + Ligas ===== */
+async function init(){
+  try{
+    const h = await api('/health');
+    $('#apiState').textContent = 'OK'; $('#apiState').className = 'ok';
+    $('#apiTeams').textContent = h.teams?.length ?? '—';
+  }catch(e){ $('#apiState').textContent = 'Error'; $('#apiState').className = 'err'; }
+
+  try{
+    const l = await api('/leagues');
+    const sel = $('#league'); sel.innerHTML = '';
+    const opt0 = document.createElement('option'); opt0.text = '— Selecciona liga —'; opt0.value=''; sel.appendChild(opt0);
+    (l.leagues||[]).forEach(code=>{
+      const o=document.createElement('option'); o.value = code; o.text = LEAGUE_NAMES[code] || code; sel.appendChild(o);
+    });
+  }catch(e){ console.warn('leagues', e); }
+}
+
+/* ===== Equipos por liga ===== */
+async function loadTeams(){
+  const lg = $('#league').value;
+  if(!lg){ $('#home').innerHTML=''; $('#away').innerHTML=''; updateCrestsFromSelects(); return; }
+  const t = await api('/teams?league='+encodeURIComponent(lg));
+  const teams = t.teams || [];
+  const fill = (el) => { el.innerHTML=''; teams.forEach(x=>{ const o=document.createElement('option'); o.value=o.text=x; el.appendChild(o); }); };
+  fill($('#home')); fill($('#away'));
+  if(teams.length>=2){ $('#home').value = teams[0]; $('#away').value = teams[1]; }
+  updateCrestsFromSelects();   // <- aquí sí, al final de cargar equipos
+}
+
+/* ===== Predecir ===== */
+async function doPredict(){
+  const home = $('#home').value, away = $('#away').value;
+  if(!home || !away || home===away){ alert('Elige dos equipos distintos'); return; }
+  const r = await api(`/predict?home=${encodeURIComponent(home)}&away=${encodeURIComponent(away)}`);
+
+  // KPIs principales
+  $('#p_home').textContent = fmt(r.p_home);
+  $('#p_draw').textContent = fmt(r.p_draw);
+  $('#p_away').textContent = fmt(r.p_away);
+
+  // Resumen chips
+  $('#xgh').textContent = (r.exp_goals_home ?? '—');
+  $('#xga').textContent = (r.exp_goals_away ?? '—');
+  $('#xgt').textContent = (r.exp_goals_total ?? '—');
+  $('#over').textContent = fmt(r.ou_over25);
+  $('#under').textContent = fmt(r.ou_under25);
+  $('#bttsYes').textContent = fmt(r.btts_yes);
+  $('#bttsNo').textContent  = fmt(r.btts_no);
+  $('#src1x2').textContent = r.src_1x2; $('#srcou').textContent = r.src_ou25; $('#srcbtts').textContent = r.src_btts;
+
+  // Más chips
+  $('#cornh').textContent = r.exp_corners_home ?? '—';
+  $('#corna').textContent = r.exp_corners_away ?? '—';
+  $('#cort').textContent  = r.exp_corners_total ?? '—';
+  $('#corOver').textContent = fmt(r.corners_over95);
+  $('#corUnder').textContent = fmt(r.corners_under95);
+  $('#yelh').textContent = r.exp_yellows_home ?? '—';
+  $('#yela').textContent = r.exp_yellows_away ?? '—';
+  $('#yelt').textContent = r.exp_yellows_total ?? '—';
+  $('#yelOver').textContent = fmt(r.yellows_over45);
+  $('#yelUnder').textContent = fmt(r.yellows_under45);
+  $('#redh').textContent = r.exp_reds_home ?? '—';
+  $('#reda').textContent = r.exp_reds_away ?? '—';
+  $('#redt').textContent = r.exp_reds_total ?? '—';
+  $('#g0').textContent = fmt(r.p_goals_0);
+  $('#g1').textContent = fmt(r.p_goals_1);
+  $('#g2').textContent = fmt(r.p_goals_2);
+  $('#g3p').textContent = fmt(r.p_goals_3plus);
+
+  // Gráfico + sidebar + escudos
+  renderChart(r.p_home, r.p_draw, r.p_away);
+  renderSidebarMetrics(r);
+  setCrests(home, away);
+}
+
+/* ===== Recargar datos ===== */
+async function reloadLeagues(){
+  const btn = $('#reload'); btn.disabled = true; btn.textContent = 'Cargando…';
+  try{
+    const body = { leagues: DEFAULT_LEAGUES, last_n: 5 };
+    const r = await fetch('/reload_multi',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    const j = await r.json();
+    const years = (typeof j.years === 'string') ? j.years : (Array.isArray(j.years) ? j.years.join(', ') : '—');
+    const lg = body.leagues.map(c=>LEAGUE_NAMES[c]||c).join(', ');
+    $('#hint').textContent = `✅ Recargado: ${j.rows ?? '?'} partidos · Ligas: ${lg} · Años: ${years}`;
+    await init();
+  }catch(err){ alert('No se pudo recargar datos. Revisa el servidor.'); }
+  btn.disabled = false; btn.textContent = '🔄 Cargar ligas';
+}
+
+/* ===== Últimos partidos ===== */
+async function loadRecent(){
+  try{
+    const data = await api("/recent?limit=10");
+    const body = document.getElementById("recentBody");
+    const hint = document.getElementById("recentHint");
+    body.innerHTML = "";
+    if(!data.matches || data.matches.length === 0){ hint.innerText = "No hay partidos recientes."; return; }
+    hint.style.display = "none";
+    data.matches.forEach(m=>{
+      const tr = document.createElement("tr");
+      const score = (m.FTHG == null || m.FTAG == null) ? "—" : `${m.FTHG} - ${m.FTAG}`;
+      let cls = "draw";
+      if (m.FTHG != null && m.FTAG != null){
+        if (m.FTHG > m.FTAG) cls = "win"; else if (m.FTHG < m.FTAG) cls = "loss";
+      }
+      tr.innerHTML = `
+        <td style="padding:8px">${m.Date || "—"}</td>
+        <td style="padding:8px">${LEAGUE_NAMES[m.League] || m.League || "—"}</td>
+        <td style="padding:8px" class="${cls}">${m.HomeTeam || "—"}</td>
+        <td style="padding:8px" class="score">${score}</td>
+        <td style="padding:8px" class="${cls === "win" ? "loss" : (cls === "loss" ? "win" : "draw")}">${m.AwayTeam || "—"}</td>
+      `;
+      body.appendChild(tr);
+    });
+  }catch(err){ document.getElementById("recentHint").innerText = "Error al cargar."; }
+}
+
+/* ===== Eventos ===== */
+document.addEventListener('DOMContentLoaded', async () => {
+  await init();
+  await loadRecent();
+  $('#league').addEventListener('change', async () => { await loadTeams(); });
+  $('#home').addEventListener('change', updateCrestsFromSelects);
+  $('#away').addEventListener('change', updateCrestsFromSelects);
+  $('#reload').addEventListener('click', reloadLeagues);
+  $('#predict').addEventListener('click', doPredict);
+});
+</script>
+</body>
+</html>
