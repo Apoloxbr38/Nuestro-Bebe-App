@@ -1,1 +1,2 @@
 __pycache__/\n*.pyc\nbackend/data/merged.csv\nbackend/data/raw/**/*.csv\n.venv/\n.env\n.DS_Store\nnode_modules/
+backend/data/last_reload.txt

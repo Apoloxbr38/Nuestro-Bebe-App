@@ -1,47 +1,27 @@
-# Sports Predictor (v0.1 sexy)
-Proyecto base minimalista para una app web de predicción de deportes (enfocado en fútbol por ahora).
-- Backend: FastAPI + Poisson baseline.
-- Frontend: HTML + JS vainilla.
+# ⚽✨ Nuestro Bebé App – Sexy Sports Predictor ✨⚽
 
-## Requisitos
-Python 3.10+
+![Logo](frontend/assets/logo.png)
 
+---
+
+## 💜 Sobre el proyecto
+**Nuestro Bebé App** es un predictor de fútbol con estética sexy, elegante y deportiva.  
+Combina modelos estadísticos (Poisson, BTTS, Over/Under) con una interfaz oscura con gradientes violetas y azules.  
+Es nuestro pequeño bebé ⚽, creado con cariño, pasión y un toque romántico.  
+
+---
+
+## 🚀 Tecnologías principales
+- **Backend:** [FastAPI](https://fastapi.tiangolo.com/) (endpoints de predicción y explicaciones).
+- **Modelos:** Poisson baseline + modelos entrenados (Over/Under, BTTS, etc.).
+- **Frontend:** HTML + CSS + JS con [Chart.js](https://www.chartjs.org/).
+- **Data:** CSVs históricos de football-data.co.uk.
+
+---
+
+## 🛠️ Instalación y ejecución
+
+### 1. Clonar el repo
 ```bash
-pip install -r backend/requirements.txt
-```
-## Ejecutar backend
-```bash
-uvicorn backend.app:app --reload
-```
-
-## Ejecutar frontend (simple)
-Opción rápida:
-```bash
-cd frontend
-python -m http.server 5173
-```
-Luego abre: http://localhost:5173
-
-(El backend corre en http://127.0.0.1:8000; CORS habilitado)
-
-## Flujo
-1) Backend carga `backend/data/sample_matches.csv` y entrena un modelo Poisson sencillo.
-2) Frontend pide `/teams` para llenar selects.
-3) Al presionar **PREDICT**, llama `/predict?home=...&away=...` y muestra probabilidades y marcadores probables.
-
-## Estructura
-```
-sports-predictor/
-  backend/
-    app.py
-    requirements.txt
-    models/
-      baseline.py
-    data/
-      sample_matches.csv
-  frontend/
-    index.html
-    assets/
-      app.js
-      style.css
-```
+git clone https://github.com/Apoloxbr38/Nuestro-Bebe-App.git
+cd Nuestro-Bebe-App
