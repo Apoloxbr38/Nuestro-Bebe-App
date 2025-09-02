@@ -1,15 +1,45 @@
-# backend/app.py
+# backend/app.py — cabecera ordenada
+from fastapi import FastAPI, Query, Body
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi import FastAPI, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import pandas as pd
+from typing import List, Optional
 from pathlib import Path
+import time
 import joblib
 import math
 import numpy as np
-from typing import List, Optional
+import pandas as pd
+
+# Puedes mantener estos imports absolutos si estás corriendo desde la raíz con:
+#   uvicorn backend.app:app --reload
+from .utils.data_status import compute_status, record_reload_marker
+from backend.models.baseline import PoissonModel
+from backend.data_loader import refresh_dataset, MERGED
+from backend.train import MODEL_PATH
+from backend.train_ou import MODEL_OU_PATH
+from backend.train_btts import MODEL_BTTS_PATH
+from backend.models.features import build_training_table
+
+app = FastAPI(
+    title="Sports Predictor API",
+    version="0.8",
+    swagger_ui_parameters={"defaultModelsExpandDepth": -1},
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,   # opcional, útil si en el futuro usas cookies
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ✅ AHORA sí: define /data/status DESPUÉS de crear app
+@app.get("/data/status")
+def data_status():
+    return compute_status()
 
 # --- Cache global en memoria (para velocidad) ---
 df_global: Optional[pd.DataFrame] = None
@@ -244,6 +274,7 @@ def reload_data(build_features: bool = False):
     path = refresh_dataset(leagues=("SP1",), start_years=(2023, 2024))
     df = pd.read_csv(path)
     _set_data(df, Path(path), build_features=build_features)
+    record_reload_marker()  # ✅ ahora sí: marca recarga al completar
     return {"status": "ok", "rows": int(len(df)), "file": str(path), "built": build_features}
 
 @app.post("/reload_multi")
@@ -262,11 +293,16 @@ def reload_multi(
     path = refresh_dataset(leagues=tuple(leagues), **kwargs)
     df = pd.read_csv(path)
     _set_data(df, Path(path), build_features=build_features)
+    record_reload_marker()  # ✅ marca recarga exitosa aquí
     return {
         "status": "ok", "rows": int(len(df)), "file": str(path),
         "leagues": leagues, "years": (start_years if start_years else f"last_{last_n}"),
         "built": build_features
     }
+
+# al final de tu lógica de recarga, si todo fue bien:
+record_reload_marker()
+
 # --- Warmup para precalentar cache ---
 @app.post("/warmup")
 def warmup():
