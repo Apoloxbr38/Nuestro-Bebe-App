@@ -13,7 +13,7 @@ live = LiveManager()  # MockProvider por defecto
 @live_router.get("/state")
 async def live_state(match_id: str | None = None):
     if not match_id:
-        match_id = "Sexy FC:Romance United"  # demo por defecto
+        match_id = "1126024"  # un fixture real de ejemplo
     ev = await live.provider.get_state(match_id)
     return JSONResponse(ev.model_dump())
 
