@@ -12,6 +12,9 @@ import joblib
 import math
 import numpy as np
 import pandas as pd
+import requests
+from .config import RAPIDAPI_KEY, RAPIDAPI_HOST
+
 
 # --- Compat XGBoost para modelos pickeados antiguos ---
 def _xgb_compat(model):
@@ -475,6 +478,26 @@ def health():
     aways = set(df[away_col].dropna().astype(str).unique())
     all_teams = sorted(list(homes.union(aways)))
     return {"status": "ok", "teams": all_teams}
+
+@app.get("/test_live")
+def test_live():
+    """
+    Prueba conexión a API-Football (RapidAPI) para traer partidos en vivo.
+    NO toca nada del predictor — solo devuelve el JSON crudo.
+    """
+    url = f"https://{RAPIDAPI_HOST}/v3/fixtures"
+    headers = {
+        "X-RapidAPI-Key": RAPIDAPI_KEY,
+        "X-RapidAPI-Host": RAPIDAPI_HOST,
+    }
+    params = {"live": "all"}  # todos los que estén en vivo ahora
+
+    try:
+        r = requests.get(url, headers=headers, params=params, timeout=15)
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        return {"error": str(e)}
 
 # --- Predicción ---
 class _PredictPayload(BaseModel):
