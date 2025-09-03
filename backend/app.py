@@ -30,6 +30,20 @@ app = FastAPI(
     version="1.1.0",
     swagger_ui_parameters={"defaultModelsExpandDepth": -1},
 )
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+FRONTEND_DIR = BASE_DIR / "frontend"
+
+# /assets (css/js/img) -> frontend/assets
+app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="assets")
+
+# / -> frontend/index.html
+@app.get("/")
+def root():
+    return FileResponse(FRONTEND_DIR / "index.html")
 
 app.add_middleware(
     CORSMiddleware,
@@ -44,7 +58,7 @@ FRONT_DIR = Path(__file__).parent.parent / "frontend"
 app.mount("/app", StaticFiles(directory=str(FRONT_DIR), html=True), name="frontend")
 
 # Router LIVE
-app.include_router(live_router, prefix="/live")
+app.include_router(live_router, prefix="/live", tags=["live"])
 
 # =========================
 # Datos base (CSV actual)
