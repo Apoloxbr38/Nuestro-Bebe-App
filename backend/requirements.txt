@@ -1,9 +1,11 @@
 fastapi
 uvicorn[standard]
+httpx
+pydantic>=2
+python-dotenv
 pandas
 numpy
 scikit-learn
 joblib
-python-dotenv
 requests
 xgboost

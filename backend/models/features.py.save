@@ -5,8 +5,7 @@ import numpy as np
 from .elo import Elo
 
 # Columnas opcionales que intentaremos usar si existen en el CSV
-OPTIONAL_COLS = ["HF", "AF", "HY", "AY", "HR", "AR", "HC", "AC"]  # Fouls, Yellow, Red, Corners
-
+OPTIONAL_COLS = ["HF","AF","HY","AY","HR","AR","HC","AC"]  # Fouls, Yellow, Red, Corners
 
 def tidy_matches(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -15,37 +14,35 @@ def tidy_matches(df: pd.DataFrame) -> pd.DataFrame:
     Extra (si hay): HF, AF, HY, AY, HR, AR, HC, AC
     """
     cols = {c.lower(): c for c in df.columns}
-    h = cols.get("hometeam") or "HomeTeam"
-    a = cols.get("awayteam") or "AwayTeam"
+    h  = cols.get("hometeam") or "HomeTeam"
+    a  = cols.get("awayteam") or "AwayTeam"
     hg = cols.get("fthg") or "FTHG"
     ag = cols.get("ftag") or "FTAG"
-    d = cols.get("date")
+    d  = cols.get("date")
 
     base = [h, a, hg, ag]
     if d:
         sel = [d] + base
         out = df[sel].copy()
-        out.columns = ["Date", "HomeTeam", "AwayTeam", "FTHG", "FTAG"]
+        out.columns = ["Date","HomeTeam","AwayTeam","FTHG","FTAG"]
         out["Date"] = pd.to_datetime(out["Date"], errors="coerce")
         out = out.sort_values("Date")
     else:
         out = df[base].copy()
-        out.columns = ["HomeTeam", "AwayTeam", "FTHG", "FTAG"]
+        out.columns = ["HomeTeam","AwayTeam","FTHG","FTAG"]
 
     # Adjunta extras si existen
     for c in OPTIONAL_COLS:
         if c in df.columns:
             out[c] = df[c].values
 
-    return out.dropna(subset=["HomeTeam", "AwayTeam", "FTHG", "FTAG"])
-
+    return out.dropna(subset=["HomeTeam","AwayTeam","FTHG","FTAG"])
 
 def _safe_col(g: pd.DataFrame, col: str) -> pd.Series:
     """Devuelve la serie si existe, si no una serie de NaN del mismo index."""
     if col in g.columns:
         return g[col]
     return pd.Series(np.nan, index=g.index)
-
 
 def rolling_team_stats(df: pd.DataFrame, window: int = 10) -> pd.DataFrame:
     """
@@ -59,10 +56,11 @@ def rolling_team_stats(df: pd.DataFrame, window: int = 10) -> pd.DataFrame:
         "GF": df["FTHG"],
         "GA": df["FTAG"],
         "is_home": 1,
-        "Fouls": _safe_col(df, "HF"),
+        # Map de stats opcionales en perspectiva LOCAL
+        "Fouls":  _safe_col(df, "HF"),
         "Yellow": _safe_col(df, "HY"),
-        "Red": _safe_col(df, "HR"),
-        "Corners": _safe_col(df, "HC"),
+        "Red":    _safe_col(df, "HR"),
+        "Corners":_safe_col(df, "HC"),
     })
     away = pd.DataFrame({
         "Date": df["Date"] if "Date" in df.columns else pd.NaT,
@@ -70,46 +68,49 @@ def rolling_team_stats(df: pd.DataFrame, window: int = 10) -> pd.DataFrame:
         "GF": df["FTAG"],
         "GA": df["FTHG"],
         "is_home": 0,
-        "Fouls": _safe_col(df, "AF"),
+        # Map de stats opcionales en perspectiva VISITANTE
+        "Fouls":  _safe_col(df, "AF"),
         "Yellow": _safe_col(df, "AY"),
-        "Red": _safe_col(df, "AR"),
-        "Corners": _safe_col(df, "AC"),
+        "Red":    _safe_col(df, "AR"),
+        "Corners":_safe_col(df, "AC"),
     })
 
     long = pd.concat([home, away], ignore_index=True)
     if "Date" in long.columns:
         long = long.sort_values("Date")
 
-    long["Win"] = (long["GF"] > long["GA"]).astype(int)
+    # Resultados
+    long["Win"]  = (long["GF"] > long["GA"]).astype(int)
     long["Draw"] = (long["GF"] == long["GA"]).astype(int)
     long["Loss"] = (long["GF"] < long["GA"]).astype(int)
-    long["GD"] = long["GF"] - long["GA"]
+    long["GD"]   = long["GF"] - long["GA"]
 
+    # Para cada equipo, calcula rolling means de las métricas disponibles
     def _apply_roll(g: pd.DataFrame) -> pd.DataFrame:
         r = g.copy()
         roll = lambda s: s.rolling(window, min_periods=1).mean()
-        r["r_GF"] = roll(r["GF"])
-        r["r_GA"] = roll(r["GA"])
-        r["r_GD"] = roll(r["GD"])
-        r["r_W"] = roll(r["Win"])
-        r["r_D"] = roll(r["Draw"])
-        r["r_L"] = roll(r["Loss"])
-        r["r_HomeRate"] = roll(r["is_home"])
-        r["r_Corners"] = roll(r["Corners"])
-        r["r_Yellow"] = roll(r["Yellow"])
-        r["r_Red"] = roll(r["Red"])
-        r["r_Fouls"] = roll(r["Fouls"])
+        r["r_GF"]        = roll(r["GF"])
+        r["r_GA"]        = roll(r["GA"])
+        r["r_GD"]        = roll(r["GD"])
+        r["r_W"]         = roll(r["Win"])
+        r["r_D"]         = roll(r["Draw"])
+        r["r_L"]         = roll(r["Loss"])
+        r["r_HomeRate"]  = roll(r["is_home"])
+        # Extras (si la columna existe, ya viene con NaN si faltaba)
+        r["r_Corners"]   = roll(r["Corners"])
+        r["r_Yellow"]    = roll(r["Yellow"])
+        r["r_Red"]       = roll(r["Red"])
+        r["r_Fouls"]     = roll(r["Fouls"])
         return r
 
     feats = (
-        long
-        .groupby("Team", group_keys=True)
-        .apply(_apply_roll, include_groups=False)
-        .reset_index(level=0)
-        .reset_index(drop=True)
+        long.groupby("Team", group_keys=False)
+            .apply(_apply_roll)
+            .reset_index(drop=True)
     )
 
-    feats = feats.loc[:, ~feats.columns.duplicated()].copy()
+    # Por si vinieran columnas duplicadas
+    feats = feats.loc[:, ~feats.columns.duplicated()]
     return feats
 
 def build_training_table(df: pd.DataFrame, window: int = 10) -> pd.DataFrame:
@@ -151,7 +152,7 @@ def build_training_table(df: pd.DataFrame, window: int = 10) -> pd.DataFrame:
         if "Date" in feats.columns and pd.notna(date):
             g = g[g["Date"] < date]
         if len(g) == 0:
-            return pd.Series([np.nan] * len(ROLL_COLS), index=ROLL_COLS)
+            return pd.Series([np.nan]*len(ROLL_COLS), index=ROLL_COLS)
         return g.iloc[-1][ROLL_COLS]
 
     # --- construir H y A sin duplicados de columnas y con índices limpios ---
@@ -184,11 +185,11 @@ def build_training_table(df: pd.DataFrame, window: int = 10) -> pd.DataFrame:
     # Objetivo 1X2
     Xy["y"] = 0
     Xy.loc[Xy["FTHG"] == Xy["FTAG"], "y"] = 1
-    Xy.loc[Xy["FTHG"] > Xy["FTAG"], "y"] = 2
+    Xy.loc[Xy["FTHG"] >  Xy["FTAG"], "y"] = 2
 
     # Rellenos prudentes (solo numéricos)
     num_cols = Xy.select_dtypes(include=[np.number]).columns
     Xy[num_cols] = Xy[num_cols].fillna(Xy[num_cols].median(numeric_only=True))
-    Xy = Xy.dropna(subset=["HomeTeam", "AwayTeam", "FTHG", "FTAG"])
+    Xy = Xy.dropna(subset=["HomeTeam","AwayTeam","FTHG","FTAG"])
 
     return Xy

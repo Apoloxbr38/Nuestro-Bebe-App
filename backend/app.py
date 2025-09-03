@@ -3,6 +3,7 @@ from fastapi import FastAPI, Query, Body
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from .live_router import live_router
 from pydantic import BaseModel
 from typing import List, Optional
 from pathlib import Path
@@ -11,6 +12,48 @@ import joblib
 import math
 import numpy as np
 import pandas as pd
+
+# --- Compat XGBoost para modelos pickeados antiguos ---
+def _xgb_compat(model):
+    """
+    Inyecta atributos que modelos XGBoost antiguos a veces no tienen,
+    para que get_params() y predict_proba() no revienten en versiones nuevas.
+    Solo setea si faltan; no pisa valores existentes.
+    """
+    try:
+        # Atributos comunes del wrapper sklearn de XGBoost
+        defaults = {
+            "n_estimators": None,
+            "learning_rate": None,
+            "max_depth": None,
+            "min_child_weight": None,
+            "subsample": None,
+            "colsample_bytree": None,
+            "colsample_bylevel": None,
+            "colsample_bynode": None,
+            "reg_alpha": None,
+            "reg_lambda": None,
+            "gamma": None,
+            "max_delta_step": None,
+            "objective": None,
+            "booster": None,
+            "n_jobs": None,
+            "random_state": None,
+            "verbosity": None,
+            "tree_method": None,
+            "predictor": None,
+            "gpu_id": None,               # 👈 el que te faltaba ahora
+            "use_label_encoder": False,   # 👈 el que faltaba antes
+        }
+        for k, v in defaults.items():
+            if not hasattr(model, k):
+                try:
+                    setattr(model, k, v)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return model
 
 # Puedes mantener estos imports absolutos si estás corriendo desde la raíz con:
 #   uvicorn backend.app:app --reload
@@ -23,8 +66,8 @@ from backend.train_btts import MODEL_BTTS_PATH
 from backend.models.features import build_training_table
 
 app = FastAPI(
-    title="Sports Predictor API",
-    version="0.8",
+    title="Sexy Sports Predictor ⚽✨",
+    version="1.1.0",
     swagger_ui_parameters={"defaultModelsExpandDepth": -1},
 )
 
@@ -35,6 +78,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# monta el router LIVE en /live
+app.include_router(live_router, prefix="/live") 
 
 # ✅ AHORA sí: define /data/status DESPUÉS de crear app
 @app.get("/data/status")
@@ -121,18 +167,6 @@ def top_drivers(row: pd.DataFrame, feature_list: list[str], k: int = 3):
         out.append(f"{pretty} {arrow}")
     return out
 
-app = FastAPI(
-    title="Sports Predictor API",
-    version="0.8",
-    swagger_ui_parameters={"defaultModelsExpandDepth": -1},
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 import math
 
@@ -238,6 +272,14 @@ def _load_and_train():
     clf_ou_bundle  = joblib.load(MODEL_OU_PATH)  if MODEL_OU_PATH.exists()  else None
     clf_btts_bundle= joblib.load(MODEL_BTTS_PATH)if MODEL_BTTS_PATH.exists()else None
 
+    # ✅ Repara compatibilidad inmediatamente después de cargar
+    if clf_bundle and isinstance(clf_bundle, dict) and "model" in clf_bundle:
+        clf_bundle["model"] = _xgb_compat(clf_bundle["model"])
+    if clf_ou_bundle and isinstance(clf_ou_bundle, dict) and "model" in clf_ou_bundle:
+        clf_ou_bundle["model"] = _xgb_compat(clf_ou_bundle["model"])
+    if clf_btts_bundle and isinstance(clf_btts_bundle, dict) and "model" in clf_btts_bundle:
+        clf_btts_bundle["model"] = _xgb_compat(clf_btts_bundle["model"])
+
     # ⚡ Precarga features (warmup automático)
     _ensure_data_loaded()
     _ensure_features()
@@ -300,10 +342,26 @@ def reload_multi(
         "built": build_features
     }
 
-# al final de tu lógica de recarga, si todo fue bien:
-record_reload_marker()
 
 # --- Warmup para precalentar cache ---
+def _warmup_xgb_bundle(bundle):
+    """Hace un predict_proba vacío para calentar XGBoost y evitar el lag del primer disparo."""
+    try:
+        if not (bundle and isinstance(bundle, dict) and "model" in bundle and "features" in bundle):
+            return
+        m = _xgb_compat(bundle["model"])
+        feats = list(bundle["features"])
+        if not feats:
+            return
+        import numpy as np
+        import pandas as pd
+        row = pd.DataFrame([ {f: 0.0 for f in feats} ])
+        _ = m.predict_proba(row)  # warmup
+        bundle["model"] = m
+        print("[WARMUP] XGB listo para", getattr(m, "objective", "1x2/unknown"))
+    except Exception as e:
+        print("[WARMUP] XGB saltado:", e)
+
 @app.post("/warmup")
 def warmup():
     _ensure_data_loaded()
@@ -320,12 +378,18 @@ def _first_col(df, primary, alts):
 # --- Últimos partidos (global, normalizados) ---
 @app.get("/recent")
 def recent(limit: int = 10):
+    """
+    Devuelve los últimos 'limit' partidos detectando columnas estándar.
+    Nunca retorna None: siempre {"matches": [...]}
+    """
     _ensure_data_loaded()
     df = df_global
+
+    # Si no hay data cargada
     if df is None or len(df) == 0:
         return {"matches": []}
 
-    # Columnas posibles
+    # Detectar columnas
     colL = _first_col(df, "League", ["Div"])
     colH = _first_col(df, "HomeTeam", ["Home", "Home_Team"])
     colA = _first_col(df, "AwayTeam", ["Away", "Away_Team"])
@@ -333,32 +397,37 @@ def recent(limit: int = 10):
     colAG = _first_col(df, "FTAG", ["AG", "AwayGoals", "Away_Goals"])
     colD  = _first_col(df, "Date", ["MatchDate", "DateStr", "Fecha"])
 
-    # Si falta lo mínimo para mostrar, devolvemos vacío
-    if not (colL and colH and colA):
+    # Si faltan columnas críticas
+    if not (colH and colA):
         return {"matches": []}
 
-    dfx = df[[c for c in [colD, colL, colH, colA, colHG, colAG] if c in df.columns]].copy()
+    keep = [c for c in [colD, colL, colH, colA, colHG, colAG] if c]
+    dfx = df[keep].copy()
 
     # Normaliza fecha
-    if colD in dfx.columns:
-        dfx["_d"] = pd.to_datetime(dfx[colD], errors="coerce", dayfirst=True)
+    if colD and colD in dfx.columns:
+        dfx["_d"] = pd.to_datetime(dfx[colD], errors="coerce", dayfirst=False)
     else:
         dfx["_d"] = pd.NaT
 
-    # Ordena por fecha (más recientes primero) y toma los últimos N
-    dfx = dfx.sort_values("_d", ascending=False).head(int(limit))
+    # Ordena por fecha descendente y limita
+    try:
+        dfx = dfx.sort_values("_d", ascending=False).head(int(limit))
+    except Exception:
+        dfx = dfx.head(int(limit))
 
-    # Construye salida con claves ESTÁNDAR
+    # Construye salida
     rows = []
     for _, r in dfx.iterrows():
         rows.append({
-            "Date": (r["_d"].strftime("%Y-%m-%d") if pd.notnull(r["_d"]) else str(r.get(colD, ""))),
-            "League": str(r.get(colL, "")),
+            "Date": (r["_d"].strftime("%Y-%m-%d") if pd.notnull(r.get("_d")) else str(r.get(colD, ""))),
+            "League": ("" if not colL else str(r.get(colL, ""))),
             "HomeTeam": str(r.get(colH, "")),
             "AwayTeam": str(r.get(colA, "")),
-            "FTHG": (None if colHG not in dfx.columns or pd.isna(r.get(colHG)) else int(r.get(colHG))),
-            "FTAG": (None if colAG not in dfx.columns or pd.isna(r.get(colAG)) else int(r.get(colAG))),
+            "FTHG": (None if not colHG or pd.isna(r.get(colHG)) else int(r.get(colHG))),
+            "FTAG": (None if not colAG or pd.isna(r.get(colAG)) else int(r.get(colAG))),
         })
+
     return {"matches": rows}
 
 # --- Info (ligas y equipos filtrados) ---
@@ -453,7 +522,10 @@ def predict(
         }])
         feats = clf_bundle["features"]
         row = row.reindex(columns=feats).fillna(row.median(numeric_only=True))
-        probs = clf_bundle["model"].predict_proba(row)[0]  # [p_away, p_draw, p_home]
+        m = clf_bundle["model"]
+        m = _xgb_compat(m)  # cinturón y tirantes, por si el bundle cambió luego del startup
+        clf_bundle["model"] = m
+        probs = m.predict_proba(row)[0]  # [p_away, p_draw, p_home]
         res["p_away"], res["p_draw"], res["p_home"] = map(lambda x: round(float(x), 4), probs)
         res["src_1x2"] = "ml"
         print(f"[PERF] ML 1X2 tomó {time.time() - t1:.3f} s")
@@ -481,7 +553,10 @@ def predict(
         }])
         feats_ou = clf_ou_bundle["features"]
         row_ou = row_ou.reindex(columns=feats_ou).fillna(row_ou.median(numeric_only=True))
-        p_over = float(clf_ou_bundle["model"].predict_proba(row_ou)[0, 1])
+        m_ou = clf_ou_bundle["model"]
+        m_ou = _xgb_compat(m_ou)   # 👈 añade compat
+        clf_ou_bundle["model"] = m_ou
+        p_over = float(m_ou.predict_proba(row_ou)[0, 1])
         res["ou_over25"] = round(p_over, 4)
         res["ou_under25"] = round(1.0 - p_over, 4)
         res["src_ou25"] = "ml"
@@ -516,7 +591,10 @@ def predict(
         }])
         feats_bt = clf_btts_bundle["features"]
         row_bt = row_bt.reindex(columns=feats_bt).fillna(row_bt.median(numeric_only=True))
-        p_yes = float(clf_btts_bundle["model"].predict_proba(row_bt)[0, 1])
+        m_bt = clf_btts_bundle["model"]
+        m_bt = _xgb_compat(m_bt)   # 👈 añade compat
+        clf_btts_bundle["model"] = m_bt
+        p_yes = float(m_bt.predict_proba(row_bt)[0, 1])
         res["btts_yes"] = round(p_yes, 4)
         res["btts_no"]  = round(1.0 - p_yes, 4)
         res["src_btts"] = "ml"
