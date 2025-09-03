@@ -1,2 +1,20 @@
 __pycache__/\n*.pyc\nbackend/data/merged.csv\nbackend/data/raw/**/*.csv\n.venv/\n.env\n.DS_Store\nnode_modules/
 backend/data/last_reload.txt
+# Python / venv / cachés
+.venv/
+backend/.venv/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints/
+
+# Build/artefactos
+dist/
+build/
+*.log
+# Node (por si acaso a futuro)
+node_modules/
+# SO
+.DS_Store
+Thumbs.db
